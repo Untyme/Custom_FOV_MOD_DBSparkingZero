@@ -1,0 +1,87 @@
+local PROCESS_NAME = 'SparkingZERO-Win64-Shipping.exe'
+local FOV_VALUE = 0  -- Default FOV
+local fovInjected = false  -- State to track if the FOV has been successfully injected
+local isFOVSet = false  -- State to track if the user has already chosen the FOV
+
+-- Function to set the permanent FOV
+local function setPermanentFOV(fovValue)
+    local processID = getProcessIDFromProcessName(PROCESS_NAME)
+
+    if processID then
+        openProcess(processID)  -- Open the process using its ID
+
+        -- Add a 3-second delay to ensure the process is fully loaded
+        sleep(3000)  -- Wait 3000 milliseconds (3 seconds)
+
+        local address = readPointer(getAddress(PROCESS_NAME .. "+081D4130"))
+
+        -- Check if the address is valid and not null
+        if address and address ~= 0 then
+            address = readPointer(address + 0x0)
+            if address and address ~= 0 then
+                -- Now write the FOV
+                writeFloat(address + 0x2ac, fovValue) -- Write the new FOV value
+                fovInjected = true  -- Mark that the FOV has been successfully injected
+            end
+        end
+    end
+end
+
+-- Function to ask the user for the FOV value
+local function promptFOV()
+    while true do
+        -- Friendly message to ask for the FOV
+        local userInput = inputQuery("Set Your FOV", "Hey there! What FOV would you like to use?\nEnter a value between 15 and 150, or 0 to reset:", tostring(FOV_VALUE))
+
+        if userInput then
+            local newFOV = tonumber(userInput) -- Convert input to a number
+
+            -- Validate the entered value
+            if newFOV == 0 then
+                FOV_VALUE = 0 -- Reset the FOV to its original state
+                isFOVSet = true
+                break -- Exit the loop
+            elseif newFOV and newFOV >= 15 and newFOV <= 150 then
+                FOV_VALUE = newFOV -- Set the new FOV value
+                isFOVSet = true
+                break -- Exit the loop if the input is valid
+            else
+                -- Show an error message if the input is invalid and ask again
+                showMessage("Invalid FOV! The FOV must be between 15 and 150, or 0 to reset.")
+            end
+        else
+            -- If the user presses "Cancel" or closes the window, exit the program
+            os.exit()
+        end
+    end
+end
+
+-- Function to monitor the process and inject the FOV
+local function monitorProcess()
+    while true do
+        local processID = getProcessIDFromProcessName(PROCESS_NAME)
+
+        if processID then
+            if not fovInjected then
+                setPermanentFOV(FOV_VALUE)  -- Inject the FOV if it hasn't been injected yet
+            end
+        else
+            if fovInjected then
+                fovInjected = false  -- Reset the state for the next time the process is launched
+            end
+        end
+
+        sleep(1000)  -- Wait 1 second before checking again
+    end
+end
+
+-- Main function
+local function main()
+    if not isFOVSet then
+        promptFOV()  -- Ask for the FOV only the first time
+    end
+    monitorProcess()  -- Start monitoring the process
+end
+
+-- Execute the main function
+main()
