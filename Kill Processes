@@ -1,0 +1,48 @@
+local PROCESS_NAMES = {'FOV 75.EXE', 'Custom FOV.EXE'}  -- List of process names to close
+
+-- Function to kill processes by name
+local function killProcesses()
+    local anyProcessClosed = false  -- Variable to check if at least one process has been closed
+
+    for _, processName in ipairs(PROCESS_NAMES) do
+        -- Command to close the process
+        local command = "taskkill /F /IM \"" .. processName .. "\""
+        local result = os.execute(command)  -- Execute the command to close the process
+
+        if result == 0 then
+            showMessage("Successfully closed: " .. processName)  -- Success message for each closed process
+            anyProcessClosed = true
+        else
+            showMessage("Failed to close: " .. processName .. ". It may not be running.")  -- Error message
+        end
+    end
+
+    return anyProcessClosed  -- Returns true if at least one process was closed
+end
+
+-- Function to ask the user if they want to retry
+local function askToRetry()
+    local response = showMessage("Do you want to try again?", "Retry?", "Yes|No")
+    return response == "Yes"  -- Returns true if the user chose to retry
+end
+
+-- Main function
+local function main()
+    while true do
+        if killProcesses() then
+            showMessage("All specified processes have been terminated successfully!")  -- Success message
+            break  -- Exit the loop if the processes were closed successfully
+        else
+            if not askToRetry() then
+                showMessage("Exiting the program. Goodbye!")  -- Exit message
+                os.exit()  -- Exit the script
+            end
+        end
+    end
+
+    sleep(2000)  -- Wait 2 seconds to allow the user to see the final message
+    os.exit()  -- Exit the script
+end
+
+-- Execute the main function
+main()
